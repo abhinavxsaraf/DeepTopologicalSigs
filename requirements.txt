@@ -1,0 +1,8 @@
+numpy<2  # torch 2.2.2, the last Intel-Mac build, needs NumPy 1.x
+scipy<1.14  # last scipy for NumPy 1.x
+pillow
+matplotlib
+gudhi
+torch
+scikit-learn
+wandb  # optional, for train.py --wandb

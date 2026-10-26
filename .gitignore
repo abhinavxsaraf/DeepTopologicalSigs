@@ -1,0 +1,11 @@
+# project-specific
+PROGRESS.md
+MPEG7/
+diagrams.pkl
+requirements_colab.txt
+
+# environment / caches
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
