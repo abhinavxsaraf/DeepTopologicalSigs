@@ -1,21 +1,15 @@
 """Compute and save the H0 diagrams of every MPEG-7 image in N_DIRECTIONS directions.
 
-Uses h0_diagram_gudhi: test_diagrams.py checks it matches h0_diagram, and it is
-much faster on large images. Images are processed in parallel, one per worker.
-
-Each mask is first reduced to its largest connected component, as in the
-authors' generate_dgm_provider.py, so every diagram has exactly one essential
+Each mask is first reduced to its largest connected component, so every diagram has exactly one essential
 point.
 
 Run: python compute_diagrams.py [root] [out]   (default: MPEG7 diagrams_lcc.pkl)
-If interrupted, run the same command again: it resumes from <out>.partial.
 
 Output is a pickled dict:
   diagrams: list with one entry per image; each entry is a list of
             N_DIRECTIONS (pairs, essential) tuples, as returned by h0_diagram.
   f_max:    (n_images, N_DIRECTIONS) array, the highest height of the object
-            in each direction. Their pipeline (pershombox de_essentialize)
-            turns the essential point (b, inf) into (b, f_max).
+            in each direction.
   angles:   the N_DIRECTIONS angles, 2*pi*k / N_DIRECTIONS.
   labels, classes, files: as from shapes.load_dataset, in the same order.
 """

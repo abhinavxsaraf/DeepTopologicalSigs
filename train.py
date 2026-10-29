@@ -1,15 +1,10 @@
-"""Train the MPEG-7 network with the authors' protocol (Hofer et al. 2017;
-their src/mpeg7/experiments.py).
+"""Train the MPEG-7 network.
 
 - One random 90/10 split, stratified: 18 train and 2 test images per class.
 - CrossEntropy, SGD (lr 0.1, momentum 0.7), batch size 128, 300 epochs,
   lr halved every 20 epochs.
 - The score is the mean test accuracy over the last 10 epochs. The paper
   reports 91.8%.
-
-Run: python train.py            (python train.py --help for the options)
-The per-epoch loss and accuracies are saved to train_log.json, and also
-sent to Weights & Biases with --wandb (run `wandb login` once first).
 """
 import argparse
 import json

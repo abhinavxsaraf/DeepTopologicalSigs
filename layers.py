@@ -55,10 +55,6 @@ class StructureElementLayer(nn.Module):
     makes the layer stable: points near the diagonal (noise) barely count.
     The two formulas agree at x1 = nu, so the value is continuous there.
 
-    Both follow the authors' code, not the paper's Eq. 3, which writes
-    sigma^2 instead of s and x1' = ln(x1 / nu) * nu + nu. Their log has a
-    kink at x1 = nu (the slope jumps from 1 to 1/nu); the paper's doesn't.
-
     The layer's output for a diagram is, for each i, the sum of element i's
     value over all points of the diagram.
     """
@@ -98,8 +94,7 @@ class EssentialLayer(nn.Module):
 
     An essential point never dies, so it only has a birth x. Element i takes
     the value exp(-sigma_i^2 (x - mu_i)^2), and the output is again the sum
-    over points. This is the plain Gaussian part of the 2D formula; check
-    Section 5 of the paper for exactly how they treat essential points.
+    over points.
     """
 
     def __init__(self, n_elements):

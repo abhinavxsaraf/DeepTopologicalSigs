@@ -1,8 +1,7 @@
 """Load the saved diagrams as padded tensors the network can take directly.
 
 Each diagram is its finite H0 pairs plus the essential point turned into
-the finite pair (b, f_max), as the authors' pipeline does (pershombox
-de_essentialize). The diagrams must come from compute_diagrams.py run on the
+the finite pair (b, f_max). The diagrams must come from compute_diagrams.py run on the
 largest component of each mask, so each has exactly one essential point.
 """
 import pickle

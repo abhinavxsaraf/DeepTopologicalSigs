@@ -2,6 +2,9 @@
 PROGRESS.md
 MPEG7/
 diagrams*.pkl
+diagrams*.pkl.partial
+train_log.json
+wandb/
 compute_lcc.log
 requirements_colab.txt
 

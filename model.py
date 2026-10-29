@@ -1,6 +1,4 @@
-"""The MPEG-7 network of Hofer et al. 2017 (supplementary figure; their
-src/mpeg7/experiments.py, MyModel).
-
+"""
 Input: for every image, 32 H0 diagrams, one per filtration direction
 (data.load_dataset gives them padded: points (B, 32, P, 2), mask (B, 32, P)).
 
@@ -26,13 +24,11 @@ class Branch(nn.Module):
 
     The convolutions have kernel size 1: for each structure element j they
     take the 3 values (one per view) and mix them into 16, then 4, numbers,
-    with the same weights for every j. They have no bias and no activation
-    in between, as in the authors' code.
+    with the same weights for every j.
     """
 
     def __init__(self, n_elements=75, s=4.0):
         super().__init__()
-        # s = 4: their starting sharpness for the shape datasets.
         self.slayer = StructureElementLayer(n_elements, s=s)
         self.conv = nn.Sequential(
             nn.Conv1d(3, 16, kernel_size=1, bias=False),
