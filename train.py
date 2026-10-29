@@ -86,6 +86,8 @@ def main():
     parser.add_argument("--lr-step", type=int, default=20,
                         help="halve the lr every this many epochs")
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--diagrams", default="diagrams_lcc.pkl",
+                        help="output of compute_diagrams.py")
     parser.add_argument("--log", default="train_log.json")
     parser.add_argument("--wandb", action="store_true",
                         help="also log to Weights & Biases")
@@ -102,7 +104,7 @@ def main():
     np.random.seed(args.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    points, mask, labels, classes = load_dataset()
+    points, mask, labels, classes = load_dataset(args.diagrams)
     train_idx, test_idx = split(labels, seed=args.seed)
     train = points[train_idx], mask[train_idx], labels[train_idx]
     test = points[test_idx], mask[test_idx], labels[test_idx]

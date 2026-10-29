@@ -32,7 +32,7 @@ class Branch(nn.Module):
 
     def __init__(self, n_elements=75, s=4.0):
         super().__init__()
-        # s = 4: their sharpness for the shape datasets (sigma = 2 here).
+        # s = 4: their starting sharpness for the shape datasets.
         self.slayer = StructureElementLayer(n_elements, s=s)
         self.conv = nn.Sequential(
             nn.Conv1d(3, 16, kernel_size=1, bias=False),

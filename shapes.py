@@ -33,6 +33,17 @@ def load_mask(path):
     return mask
 
 
+def largest_component(mask):
+    """Keep only the largest 4-connected component of the mask, as the
+    authors do (reduce_to_largest_connected_component)."""
+    lab, n = ndimage.label(mask)
+    if n <= 1:
+        return mask
+    sizes = np.bincount(lab.ravel())
+    sizes[0] = 0  # background
+    return lab == sizes.argmax()
+
+
 def load_dataset(root):
     """Return masks, integer labels, class names and file paths."""
     files = find_files(root)

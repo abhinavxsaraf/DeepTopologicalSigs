@@ -1,7 +1,9 @@
 """Load the saved diagrams as padded tensors the network can take directly.
 
-Only the finite H0 pairs are used, as in the authors' MPEG-7 model; the
-essential points are left out.
+Each diagram is its finite H0 pairs plus the essential point turned into
+the finite pair (b, f_max), as the authors' pipeline does (pershombox
+de_essentialize). The diagrams must come from compute_diagrams.py run on the
+largest component of each mask, so each has exactly one essential point.
 """
 import pickle
 
@@ -16,7 +18,7 @@ from layers import pad_diagrams
 MIN_PERSISTENCE = 0.01
 
 
-def load_dataset(path="diagrams.pkl", min_persistence=MIN_PERSISTENCE):
+def load_dataset(path="diagrams_lcc.pkl", min_persistence=MIN_PERSISTENCE):
     """All images, every direction, padded to a common number of points.
 
     Returns
@@ -34,9 +36,11 @@ def load_dataset(path="diagrams.pkl", min_persistence=MIN_PERSISTENCE):
     # One flat list in image-major order, so the padded result reshapes
     # straight back to (image, direction).
     diagrams = []
-    for image in data["diagrams"]:
-        for pairs, _essential in image:
+    for image, f_max in zip(data["diagrams"], data["f_max"]):
+        for (pairs, essential), top in zip(image, f_max):
+            assert len(essential) == 1, "expected one component per mask"
             pairs = np.asarray(pairs).reshape(-1, 2)
+            pairs = np.vstack([pairs, [[essential[0], top]]])
             diagrams.append(pairs[pairs[:, 1] - pairs[:, 0] > min_persistence])
 
     points, mask = pad_diagrams(diagrams)

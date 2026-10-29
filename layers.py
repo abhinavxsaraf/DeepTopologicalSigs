@@ -44,16 +44,20 @@ class StructureElementLayer(nn.Module):
     diagonal becomes the line x1 = 0 and x1 is the persistence scaled by
     1/sqrt(2).
     Structure element i, with centre mu_i = (mu0, mu1) and sharpness
-    sigma_i = (sigma0, sigma1), both learned, takes the value
+    s_i = (s0, s1), both learned, takes the value
 
-      exp(-sigma0^2 (x0 - mu0)^2 - sigma1^2 (x1  - mu1)^2)   if x1 >= nu
-      exp(-sigma0^2 (x0 - mu0)^2 - sigma1^2 (x1' - mu1)^2)   if 0 < x1 < nu
-      0                                                      if x1 == 0
+      exp(-s0 (x0 - mu0)^2 - s1 (x1  - mu1)^2)   if x1 >= nu
+      exp(-s0 (x0 - mu0)^2 - s1 (x1' - mu1)^2)   if 0 < x1 < nu
+      0                                          if x1 == 0
 
-    with x1' = ln(x1 / nu) * nu + nu. For x1 < nu the log pushes points towards
+    with x1' = ln(x1 / nu) + nu. For x1 < nu the log pushes points towards
     -inf as they approach the diagonal, so their value fades to 0. That's what
     makes the layer stable: points near the diagonal (noise) barely count.
     The two formulas agree at x1 = nu, so the value is continuous there.
+
+    Both follow the authors' code, not the paper's Eq. 3, which writes
+    sigma^2 instead of s and x1' = ln(x1 / nu) * nu + nu. Their log has a
+    kink at x1 = nu (the slope jumps from 1 to 1/nu); the paper's doesn't.
 
     The layer's output for a diagram is, for each i, the sum of element i's
     value over all points of the diagram.
@@ -69,12 +73,10 @@ class StructureElementLayer(nn.Module):
         mu0 = (b + d) / 2 ** 0.5
         mu1 = (d - b) / 2 ** 0.5
         mu1 = torch.where(mu1 < nu,
-                          torch.log(mu1.clamp(min=1e-8) / nu) * nu + nu, mu1)
+                          torch.log(mu1.clamp(min=1e-8) / nu) + nu, mu1)
         self.mu = nn.Parameter(torch.stack([mu0, mu1], dim=1))       # (N, 2)
-        # Their code computes exp(-s (x - mu)^2) with s = 3 (4 for the shape
-        # datasets), with no square on s. Under our sigma^2 that's sigma = sqrt(s).
-        self.sigma = nn.Parameter(
-            torch.full((n_elements, 2), s ** 0.5))                   # (N, 2)
+        # Their starting sharpness: s = 3 (4 for the shape datasets).
+        self.s = nn.Parameter(torch.full((n_elements, 2), s))       # (N, 2)
 
     def forward(self, points, mask):
         """points: (B, P, 2) as (birth, death). mask: (B, P). Returns (B, N)."""
@@ -84,9 +86,9 @@ class StructureElementLayer(nn.Module):
         x0 = (birth + death) / 2 ** 0.5
         x1 = (death - birth) / 2 ** 0.5
 
-        x1_log = torch.where(x1 < self.nu,torch.log(x1.clamp(min=1e-8)/self.nu)*self.nu + self.nu,x1)
+        x1_log = torch.where(x1 < self.nu,torch.log(x1.clamp(min=1e-8)/self.nu) + self.nu,x1)
 
-        s = torch.exp(-self.sigma[:,0]**2 * (x0[...,None] - self.mu[:,0]) ** 2 - self.sigma[:,1] ** 2 * (x1_log[...,None] - self.mu[:,1]) ** 2)
+        s = torch.exp(-self.s[:,0] * (x0[...,None] - self.mu[:,0]) ** 2 - self.s[:,1] * (x1_log[...,None] - self.mu[:,1]) ** 2)
         keep = (x1 > 0) & mask
         s = s * keep[...,None]
         return s.sum(dim=1)
@@ -107,8 +109,7 @@ class EssentialLayer(nn.Module):
 
     def forward(self, points, mask):
         """points: (B, P, 1) births. mask: (B, P). Returns (B, N)."""
-        # TODO 5: evaluate exp(-sigma^2 (x - mu)^2) for every point and
-        #   element, shape (B, P, N); set padding to 0; sum over the points.
+
         x = points[:,:,0]
         s = torch.exp(-self.sigma ** 2 * (x[...,None] - self.mu) ** 2)
         s = mask[...,None] * s

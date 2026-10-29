@@ -1,7 +1,8 @@
 # project-specific
 PROGRESS.md
 MPEG7/
-diagrams.pkl
+diagrams*.pkl
+compute_lcc.log
 requirements_colab.txt
 
 # environment / caches

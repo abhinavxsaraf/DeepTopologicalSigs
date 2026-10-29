@@ -3,12 +3,19 @@
 Uses h0_diagram_gudhi: test_diagrams.py checks it matches h0_diagram, and it is
 much faster on large images. Images are processed in parallel, one per worker.
 
-Run: python compute_diagrams.py [root] [out]   (default: MPEG7 diagrams.pkl)
+Each mask is first reduced to its largest connected component, as in the
+authors' generate_dgm_provider.py, so every diagram has exactly one essential
+point.
+
+Run: python compute_diagrams.py [root] [out]   (default: MPEG7 diagrams_lcc.pkl)
 If interrupted, run the same command again: it resumes from <out>.partial.
 
 Output is a pickled dict:
   diagrams: list with one entry per image; each entry is a list of
             N_DIRECTIONS (pairs, essential) tuples, as returned by h0_diagram.
+  f_max:    (n_images, N_DIRECTIONS) array, the highest height of the object
+            in each direction. Their pipeline (pershombox de_essentialize)
+            turns the essential point (b, inf) into (b, f_max).
   angles:   the N_DIRECTIONS angles, 2*pi*k / N_DIRECTIONS.
   labels, classes, files: as from shapes.load_dataset, in the same order.
 """
@@ -21,8 +28,8 @@ from pathlib import Path
 
 import numpy as np
 
-from diagrams import h0_diagram_gudhi
-from shapes import PATTERN, find_files, load_mask
+from diagrams import h0_diagram_gudhi, heights
+from shapes import PATTERN, find_files, largest_component, load_mask
 
 N_DIRECTIONS = 32
 ANGLES = 2 * np.pi * np.arange(N_DIRECTIONS) / N_DIRECTIONS
@@ -30,12 +37,14 @@ CHECKPOINT_EVERY = 50
 
 
 def image_diagrams(path):
-    """All N_DIRECTIONS diagrams of one image."""
-    mask = load_mask(path)
-    return [h0_diagram_gudhi(mask, a) for a in ANGLES]
+    """All N_DIRECTIONS diagrams of one image, and f_max in each direction."""
+    mask = largest_component(load_mask(path))
+    diagrams = [h0_diagram_gudhi(mask, a) for a in ANGLES]
+    f_max = [heights(mask, a)[2].max() for a in ANGLES]
+    return diagrams, f_max
 
 
-def main(root="MPEG7", out="diagrams.pkl"):
+def main(root="MPEG7", out="diagrams_lcc.pkl"):
     # Workers get file paths, not masks, so large arrays aren't copied around.
     files = find_files(root)
     names = [PATTERN.match(f.stem).group(1) for f in files]
@@ -56,13 +65,15 @@ def main(root="MPEG7", out="diagrams.pkl"):
     with Pool() as pool:
         # imap keeps the order of files, so diagrams[i] belongs to files[i].
         for i, d in enumerate(pool.imap(image_diagrams, todo), len(diagrams) + 1):
-            diagrams.append(d)
+            diagrams.append(d)  # (diagrams, f_max) of one image
             print(f"{i}/{len(files)} {files[i - 1].stem}, {time.time() - start:.0f}s",
                   flush=True)
             if i % CHECKPOINT_EVERY == 0:
                 save(diagrams, partial)
 
-    save({"diagrams": diagrams, "angles": ANGLES, "labels": labels,
+    f_max = np.array([f for _, f in diagrams])
+    diagrams = [d for d, _ in diagrams]
+    save({"diagrams": diagrams, "f_max": f_max, "angles": ANGLES, "labels": labels,
           "classes": classes, "files": [str(p) for p in files]}, Path(out))
     partial.unlink(missing_ok=True)
     print("saved", out)
