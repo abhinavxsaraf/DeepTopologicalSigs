@@ -30,6 +30,21 @@ def split(labels, test_size=0.1, seed=0):
     return torch.as_tensor(train),torch.as_tensor(test)
 
 
+def subsample(train_idx, labels, per_class, seed=0):
+    """At most per_class of the indices in train_idx from each class, picked
+    at random. For a fixed seed the subsets are nested: the 2 per class
+    picked are among the 5, which are among the 10.
+    """
+    order = train_idx[np.random.default_rng(seed).permutation(len(train_idx))]
+    counts, keep = {}, []
+    for i in order.tolist():
+        c = labels[i].item()
+        if counts.get(c, 0) < per_class:
+            counts[c] = counts.get(c, 0) + 1
+            keep.append(i)
+    return torch.as_tensor(sorted(keep))
+
+
 def train_epoch(model, points, mask, labels, optimizer, batch_size, device):
     """One pass over (points, mask, labels) in a random order, one SGD step
     per batch. The tensors are the training set only and stay on the CPU;
@@ -72,6 +87,18 @@ def evaluate(model, points, mask, labels, batch_size, device):
     return correct / n
 
 
+@torch.inference_mode()
+def predict(model, points, mask, batch_size, device):
+    """Predicted class of each sample, a long tensor on the CPU."""
+    model.eval()
+    preds = []
+    for start in range(0, points.shape[0], batch_size):
+        x = points[start:start + batch_size].to(device)
+        m = mask[start:start + batch_size].to(device)
+        preds.append(model(x, m).argmax(dim=1).cpu())
+    return torch.cat(preds)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--epochs", type=int, default=300)
@@ -81,6 +108,8 @@ def main():
     parser.add_argument("--lr-step", type=int, default=20,
                         help="halve the lr every this many epochs")
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--train-per-class", type=int, default=None,
+                        help="train on only this many images per class (the test set stays the same)")
     parser.add_argument("--diagrams", default="diagrams_lcc.pkl",
                         help="output of compute_diagrams.py")
     parser.add_argument("--log", default="train_log.json")
@@ -101,6 +130,8 @@ def main():
 
     points, mask, labels, classes = load_dataset(args.diagrams)
     train_idx, test_idx = split(labels, seed=args.seed)
+    if args.train_per_class:
+        train_idx = subsample(train_idx, labels, args.train_per_class, args.seed)
     train = points[train_idx], mask[train_idx], labels[train_idx]
     test = points[test_idx], mask[test_idx], labels[test_idx]
     print(f"{len(train_idx)} train, {len(test_idx)} test images, "
@@ -131,6 +162,12 @@ def main():
         if args.wandb:
             wandb.log({"loss": loss, "train_acc": train_acc,
                        "test_acc": test_acc, "lr": lr}, step=epoch)
+
+    # The last epoch's test predictions, for compare_errors.py.
+    history["test_idx"] = test_idx.tolist()
+    history["test_pred"] = predict(model, test[0], test[1], args.batch_size, device).tolist()
+    with open(args.log, "w") as f:
+        json.dump(history, f)
 
     last = history["test_acc"][-10:]
     print(f"mean test accuracy over the last {len(last)} epochs: "

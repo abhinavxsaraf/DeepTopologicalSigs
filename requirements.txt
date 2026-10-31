@@ -4,5 +4,6 @@ pillow
 matplotlib
 gudhi
 torch
+torchvision  # resnet_baseline.py
 scikit-learn
 wandb  # optional, for train.py --wandb

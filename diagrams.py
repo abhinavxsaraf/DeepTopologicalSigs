@@ -22,8 +22,6 @@ def heights(mask, angle):
     - r: largest distance from b to an object pixel.
     Subtracting b removes position and dividing by r removes size, so
     <p - b, d> / r lies in [-1, 1]; the + r and 2r then move it to [0, 1].
-    This matches the authors' code (NormalizedBarycentricHeightFiltration in
-    pershombox), which the initial values in layers.py assume.
 
     Returns rows, cols, h: three 1D arrays with one entry per object pixel.
     """
